@@ -3,7 +3,11 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 
 ## biblioteki
 
-### [hd44780 lib][]
+### [hd44780][hd44780 lib] : sterowanie lcd 4x20 znakow przez sterownik oparty na hd44780 podlaczony do magistrali I2C
+
+* sketch diagnostyczny
+* wlasne/niestandardowe znaki
+
 
 ## referencje
 
