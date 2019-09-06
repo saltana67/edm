@@ -34,13 +34,97 @@ const int LCD_ROWS = 4;
 //   Low Performance:  neither pin has interrupt capability
 //   for Arduino Mega Interrupt Pins are: 2, 3, 18, 19, 20, 21, 
 //   avoid using pins with LEDs attached (for Arduino Mega it is pin 13)
-#define encAPin  41 
-#define encBPin  43 
+const int encAPin  = 41; 
+const int encBPin  = 43; 
 
 Encoder enc(encAPin, encBPin);
 
+long encPosition    = -999;
+long encOldPosition = -999;
 
-long encOldPosition  = -999;
+
+/**************
+ * mode switch
+ **************/
+//mode switch pins
+const int SWPIN_RESERVE  = 23;  //  A     1
+const int SWPIN_DOWN     = 25;  //  A     3  
+const int SWPIN_UP       = 27;  //  A     5
+const int SWPIN_AUTO     = 29;  //  A     7
+const int SWPIN_STOP     = 31;  //  C     6
+const int SWPIN_ZERO     = 22;  //  A     0
+const int SWPIN_VMAX     = 24;  //  A     2
+const int SWPIN_VMIN     = 26;  //  A     4
+const int SWPIN_FLUSH    = 28;  //  A     6
+
+//defines for bit number of input pin in port
+//        name            bit     port  bit
+const int SWBIT_RESERVE = 1;  //  A     1
+const int SWBIT_DOWN    = 3;  //  A     3  
+const int SWBIT_UP      = 5;  //  A     5
+const int SWBIT_AUTO    = 7;  //  A     7
+const int SWBIT_STOP    = 6;  //  C     6
+const int SWBIT_ZERO    = 0;  //  A     0
+const int SWBIT_VMAX    = 2;  //  A     2
+const int SWBIT_VMIN    = 4;  //  A     4
+const int SWBIT_FLUSH   = 6;  //  A     6
+
+//mode constants
+//we use pin bit number as mode id
+//        name            bit                 port  bit
+const int mode_ZERO     = SWBIT_ZERO;     //  A     0
+const int mode_RESERVE  = SWBIT_RESERVE;  //  A     1
+const int mode_VMAX     = SWBIT_VMAX;     //  A     2
+const int mode_DOWN     = SWBIT_DOWN;     //  A     3  
+const int mode_VMIN     = SWBIT_VMIN;     //  A     4
+const int mode_UP       = SWBIT_UP;       //  A     5
+const int mode_FLUSH    = SWBIT_FLUSH;    //  A     6
+const int mode_AUTO     = SWBIT_AUTO;     //  A     7
+
+const int mode_STOP     = 8;              //  C     6
+
+const int mode_INIT     = 9;  //pseudo mode for starting ...
+
+
+const int RELAY_PIN     = 49; //  L     0
+
+const int EDM_CURRENT_ADC_PIN = A0;
+
+//constant strings
+//mode labels for displaying
+const String label_INIT     = "INIT...";
+const String label_RESERVE  = "RESERVE";
+const String label_DOWN     = "  UP   ";  
+const String label_UP       = " DOWN  ";
+const String label_AUTO     = " AUTO  ";
+const String label_STOP     = " STOP  ";
+const String label_ZERO     = " ZERO  ";
+const String label_VMAX     = " VMAX  ";
+const String label_VMIN     = " VMIN  ";
+const String label_FLUSH    = " FLUSH ";
+
+const String label_BLANKMODE= "       ";
+
+const String modeLabel[10] = {
+  /*0: mode_ZERO*/     label_ZERO    ,
+  /*1: mode_RESERVE*/  label_RESERVE ,
+  /*2: mode_VMAX*/     label_VMAX    ,
+  /*3: mode_DOWN*/     label_DOWN    ,
+  /*4: mode_VMIN*/     label_VMIN    ,
+  /*5: mode_UP*/       label_UP      ,
+  /*6: mode_FLUSH*/    label_FLUSH   ,
+  /*7: mode_AUTO*/     label_AUTO    ,
+  /*8: mode_STOP*/     label_STOP    ,
+  /*9: mode_INIT*/     label_INIT
+};
+
+//other strings
+                            //0         1         
+                            //01234567890123456789
+
+const String label_INFO    = "MACZ(c) EDM  v.00001";
+
+int mode = mode_INIT;
 
 /*******************************************************/
 void setup()
@@ -72,8 +156,22 @@ void setup()
   lcd.lineWrap();
   
   // Print a message to the LCD
-  lcd.print("'Electrical discharge machining' by Marcin Czernik (& Adam Ziemkiewicz)");
+  lcd.clear();
+  lcd.print(label_INFO);
 
+  //all switch input pulled up
+  pinMode(SWPIN_RESERVE  , INPUT_PULLUP);
+  pinMode(SWPIN_DOWN     , INPUT_PULLUP);
+  pinMode(SWPIN_UP       , INPUT_PULLUP);
+  pinMode(SWPIN_AUTO     , INPUT_PULLUP);
+  pinMode(SWPIN_STOP     , INPUT_PULLUP);
+  pinMode(SWPIN_ZERO     , INPUT_PULLUP);
+  pinMode(SWPIN_VMAX     , INPUT_PULLUP);
+  pinMode(SWPIN_VMIN     , INPUT_PULLUP);
+  pinMode(SWPIN_FLUSH    , INPUT_PULLUP);
+
+  mode = mode_INIT;
+  
   Serial.begin(9600);
 }
 
@@ -90,20 +188,73 @@ unsigned long display_last_update = 0;
 //millis elapsed since last update
 unsigned long display_elapsed = 0;
 
+byte  modeSwitches    = 0;
+byte  modeSwitchesOld = 0;
+
+int   oldMode = mode;
+
 /*******************************************************/
 void loop() {
 /*******************************************************/
-  long encPosition = enc.read();
+
+  //set to true if something change since last loop iteration
+  boolean changed = false;
+  
+  //check switch position and get new mode 
+  modeSwitchesOld = modeSwitches;
+  modeSwitches = ~PINA;
+
+  if( modeSwitches != modeSwitchesOld ) {
+    changed = true;
+    if( modeSwitches == 0 )
+       ;//do nothing for now
+    else {
+      for( int i = 7; i >= 0; i-- ){
+        if( modeSwitches & (1<<i) ) {
+          if( (modeSwitches & ~(1<<i)) == 0 ){
+            oldMode = mode;
+            mode = i;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  //get encoder value
+  encPosition = enc.read();
   if (encPosition != encOldPosition) {
     encOldPosition = encPosition;
+    changed = true;
+  }
+
+  //print current state to serial id changed 
+  if( changed ) {
+    Serial.print(mode);
+    Serial.print("\t");
+    Serial.print(modeSwitches);
+    Serial.print("\t");
     Serial.print(encPosition);
     Serial.println("");
   }
-
+  
   //update lcd display content if necessary
   display_elapsed = millis() - display_last_update;
   
   if( display_elapsed > displayUpdatePeriod ) {
+
+    //update mode
+    lcd.setCursor(0,2);     //clear old content
+    lcd.print(label_BLANKMODE);
+    lcd.setCursor(0,2);
+    lcd.print(modeLabel[mode]);
+
+    //update modeSwitch state
+    lcd.setCursor(0,3);     //clear old content
+    lcd.print("        ");
+    lcd.setCursor(0,3);
+    lcd.print(modeSwitches,BIN);
+
     //update encPosition display
     lcd.setCursor(12,3);    //clear old content
     lcd.print("        ");
