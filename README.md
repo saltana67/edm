@@ -3,7 +3,7 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 
 ## biblioteki
 
-### [hd44780 arduino lib][]
+### [hd44780 lib][hd44780]
 
 ## referencje
 
