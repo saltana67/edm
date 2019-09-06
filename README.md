@@ -58,10 +58,8 @@ Dokumentacja mowi:
 wiec najlepiej by bylo tak zrobic, podwiesic enkoder na ktores z tych pinow ...
  
 ## referencje
-#### [bilioteka hd44780 (Bill Perry) dla arduino][hd44780 arduino lib]
-#### [bilioteka hd44780 (Bill Perry) dla arduino @github][hd44780 lib] 
-#### [Encoder: Quadrature Encoder Library for Arduino by Paul Stoffregen][PaulStoffregen Encoder] 
-#### [Encode source: Quadrature Encoder Library for Arduino Paul Stoffregen @gtihub][PaulStoffregen Encoder code] 
+#### [bilioteka hd44780 (Bill Perry) dla arduino][hd44780 arduino lib] _([kod @github][hd44780 lib])_
+#### [bilioteka Encoder (Paul Stoffregen) dla arduino][PaulStoffregen Encoder] _([kod @github][PaulStoffregen Encoder code])_
 
 
 ### linki 
