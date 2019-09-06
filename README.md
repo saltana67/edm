@@ -8,7 +8,7 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 1. wybierz katalog, w ktorym chcesz umiescic project i przejdz do niego, np: ~/Devel/micro/Marcinu/arduino/ 
 
   ```bash
-  cd ~/Devel/micro/Marcinu/arduino/
+  adam@sabayon ~ $ cd ~/Devel/micro/Marcinu/arduino/
   ```   
 
 2. sklonuj projekt z github'a
