@@ -58,10 +58,10 @@ Dokumentacja mowi:
 wiec najlepiej by bylo tak zrobic, podwiesic enkoder na ktores z tych pinow ...
  
 ## referencje
-#### [hd44780 arduino lib][]
-#### [hd44780 lib][] 
-#### [PaulStoffregen Encoder][] 
-#### [PaulStoffregen Encoder code][] 
+#### [bilioteka hd44780 (Bill Perry) dla arduino][hd44780 arduino lib]
+#### [bilioteka hd44780 (Bill Perry) dla arduino @github][hd44780 lib] 
+#### [Encoder: Quadrature Encoder Library for Arduino by Paul Stoffregen][PaulStoffregen Encoder] 
+#### [Encode source: Quadrature Encoder Library for Arduino Paul Stoffregen @gtihub][PaulStoffregen Encoder code] 
 
 
 ### linki 
@@ -83,10 +83,10 @@ wiec najlepiej by bylo tak zrobic, podwiesic enkoder na ktores z tych pinow ...
 [hd44780 CustomChars example]:	https://github.com/duinoWitchery/hd44780/blob/master/examples/ioClass/hd44780_I2Cexp/LCDCustomChars/LCDCustomChars.ino
 
 [PaulStoffregen Encoder]:	https://www.pjrc.com/teensy/td_libs_Encoder.html
-				"Quadrature Encoder Library for Arduino by PaulStoffregen"
+				"Quadrature Encoder Library for Arduino by Paul Stoffregen"
 
 [PaulStoffregen Encoder code]:	https://github.com/PaulStoffregen/Encoder
-				"Quadrature Encoder Library for Arduino PaulStoffregen @gtihub"
+				"Quadrature Encoder Library for Arduino Paul Stoffregen @gtihub"
 	
 #### polskie znaki diakrytyczne
 
