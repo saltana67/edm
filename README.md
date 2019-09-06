@@ -1,6 +1,12 @@
 # edm
 Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 
+## biblioteki
+
+### [hd44780 arduino lib][hd44780] ([hd44780 lib][homepage])
+
+*[I2CexpDiag][sketch diagnostyczny hd44780 przez I2]
+*[hd44780 CustomChars example][]
 
 ## referencje
 
@@ -11,8 +17,11 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 
 [Markdown Cheatsheet]:		https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
 [Markdown TOC creation]:	https://github.com/ekalinin/github-markdown-toc
-
-
+[hd44780 arduino lib]:		https://www.arduinolibraries.info/libraries/hd44780
+[hd44780 lib]:			https://github.com/duinoWitchery/hd44780
+[I2CexpDiag]:			https://github.com/duinoWitchery/hd44780/blob/master/examples/ioClass/hd44780_I2Cexp/I2CexpDiag/I2CexpDiag.ino
+				"sketch diagnostyczny hd44780 przez I2"
+[hd44780 CustomChars example]:	https://github.com/duinoWitchery/hd44780/blob/master/examples/ioClass/hd44780_I2Cexp/LCDCustomChars/LCDCustomChars.ino
 #### polskie znaki diakrytyczne
 
 W alfabecie polskim jest dziewięć liter tworzonych za pomocą znaków diakrytycznych (litery diakrytyzowane, litery diakrytyczne): 
