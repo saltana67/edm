@@ -21,19 +21,19 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 3. otworz arduino IDE
 4. zainstaluj konieczne biblioteki
 4. otworz menu *File*, wybierz punkt *Open...*
-5. otworzy sie dialog wyboru pliku, nawiguj do katalogu, ktory sklonowales, np: ~/Devel/micro/Marcinu/arduino/edm/
+5. otworzy sie dialog wyboru pliku, nawiguj do katalogu, ktory sklonowales, np: **~/Devel/micro/Marcinu/arduino/edm/**
 6. wybierz plik edm.ino
 
 > Mozna tez sciagnac to samo jako [archiwum w formacie zip](https://github.com/saltana67/edm/archive/master.zip) > (dostepne ze strony github pod guzikiem `Clone or download`), po czym rozpakowac samemu i otworzyc w IDE ...
 
-## odswierzanie do najnowszej wersji
+## odswierzanie do najnowszej wersji z repozytorium
 
-1. przejdz do sklonowanego katalogu, np: ~/Devel/micro/Marcinu/arduino/edm/
+1. przejdz do katalogu sklonowanego projektu, np: _~/Devel/micro/Marcinu/arduino/edm/_
 
   ```bash
   $ cd ~/Devel/micro/Marcinu/arduino/edm
   ```   
-2. zciagnij zmiany z repozytorium kodu 
+2. sciagnij zmiany z repozytorium kodu 
 
   ```bash
   $ git pull
