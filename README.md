@@ -3,10 +3,7 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 
 ## biblioteki
 
-### [hd44780 arduino lib][hd44780] ([hd44780 lib][homepage])
-
-  *[I2CexpDiag][sketch diagnostyczny hd44780 przez I2]
-  *[hd44780 CustomChars example][]
+### [hd44780 arduino lib][]
 
 ## referencje
 
