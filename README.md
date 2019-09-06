@@ -8,16 +8,24 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 1. wybierz katalog, w ktorym chcesz umiescic project i przejdz do niego, np: ~/Devel/micro/Marcinu/arduino/ 
 
   ```bash
-  adam@sabayon ~ $ cd ~/Devel/micro/Marcinu/arduino/
+  $ cd ~/Devel/micro/Marcinu/arduino/
   ```   
 
 2. sklonuj projekt z github'a
+
+  ```bash
+  $ git clone https://github.com/saltana67/edm.git
+  ```   
+
+  powinie powstac katalog emd, a w nim co najmniej sketch *emd.ino* i plik dokumentacji *README.md* w formacie [markdown][Markdown Cheatsheet]
+
 3. otworz arduino IDE
 4. zainstaluj konieczne biblioteki
 4. otworz menu *File*, wybierz punkt *Open...*
-5. otworzy sie dialog wyboru pliku, nawiguj do katalowu, ktory sklonowales, np: ~/Devel/micro/Marcinu/arduino/edm
+5. otworzy sie dialog wyboru pliku, nawiguj do katalogu, ktory sklonowales, np: ~/Devel/micro/Marcinu/arduino/edm/
 6. wybierz plik edm.ino
 
+> Mozna tez sciagnac to samo jako [archiwum w formacie zip](https://github.com/saltana67/edm/archive/master.zip) > (dostepne ze strony github po guzikiem *Clone or download*), po czy rozpakowac samemu i otworzyc w IDE ...
 
 ## biblioteki
 
