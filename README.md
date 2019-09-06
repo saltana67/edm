@@ -1,6 +1,24 @@
 # edm
 Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 
+## instalacja
+
+0. otworz terminal z (bash) shell
+
+1. wybierz katalog, w ktorym chcesz umiescic project i przejdz do niego, np: ~/Devel/micro/Marcinu/arduino/ 
+
+  ```bash
+  cd ~/Devel/micro/Marcinu/arduino/
+  ```   
+
+2. sklonuj projekt z github'a
+3. otworz arduino IDE
+4. zainstaluj konieczne biblioteki
+4. otworz menu *File*, wybierz punkt *Open...*
+5. otworzy sie dialog wyboru pliku, nawiguj do katalowu, ktory sklonowales, np: ~/Devel/micro/Marcinu/arduino/edm
+6. wybierz plik edm.ino
+
+
 ## biblioteki
 
 ### [hd44780][hd44780 lib] : sterowanie lcd 4x20 znakow przez sterownik oparty na hd44780 podlaczony do magistrali I2C
