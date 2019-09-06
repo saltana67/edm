@@ -36,7 +36,8 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 ### [Encoder _(PaulStoffregen wersja 1.4.1)_][PaulStoffregen Encoder] : czytanie encodera
 
 Dokumentacja mowi:
-> Best Performance: Both signals connect to interrupt pins. 
+> Best Performance: Both signals connect to interrupt pins.
+> 
 > | Board        | Interrupt Pins       | LED Pin(do not use)|
 > | -------------|----------------------| -------------------|
 > | Arduino Mega | 2, 3, 18, 19, 20, 21 | 13 |
