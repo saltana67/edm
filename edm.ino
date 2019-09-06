@@ -10,27 +10,41 @@
 #include <Wire.h>
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
+
+// This optional setting causes Encoder to use more optimized code,
+// It must be defined before Encoder.h is included.
+// comment next line out in case of problems.
+#define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
 
+/**************
+ * LCD
+ **************/
 hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
 // LCD geometry
 const int LCD_COLS = 20;
 const int LCD_ROWS = 4;
 
-//encoder settings
-#define encAPin  41 
-#define encBPin  43 
-
-// Change these two numbers to the pins connected to your encoder.
+/**************
+ * encoder
+ **************/
+//encoder pins
 //   Best Performance: both pins have interrupt capability
 //   Good Performance: only the first pin has interrupt capability
 //   Low Performance:  neither pin has interrupt capability
+//   for Arduino Mega Interrupt Pins are: 2, 3, 18, 19, 20, 21, 
+//   avoid using pins with LEDs attached (for Arduino Mega it is pin 13)
+#define encAPin  41 
+#define encBPin  43 
+
 Encoder enc(encAPin, encBPin);
-//   avoid using pins with LEDs attached
+
 
 long encOldPosition  = -999;
 
+/*******************************************************/
 void setup()
+/*******************************************************/
 {
   int status;
 
@@ -76,7 +90,9 @@ unsigned long display_last_update = 0;
 //millis elapsed since last update
 unsigned long display_elapsed = 0;
 
+/*******************************************************/
 void loop() {
+/*******************************************************/
   long encPosition = enc.read();
   if (encPosition != encOldPosition) {
     encOldPosition = encPosition;
