@@ -16,7 +16,7 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
   ```bash
   $ git clone https://github.com/saltana67/edm.git
   ```
-  powinien powstac katalog emd, a w nim co najmniej sketch *emd.ino* i plik dokumentacji *README.md* w formacie [markdown][Markdown Cheatsheet]
+  powinien powstac katalog _emd_, a w nim co najmniej sketch *emd.ino* i plik dokumentacji *README.md* w formacie [markdown][Markdown Cheatsheet]
 
 3. otworz arduino IDE
 4. zainstaluj konieczne biblioteki
@@ -25,6 +25,20 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 6. wybierz plik edm.ino
 
 > Mozna tez sciagnac to samo jako [archiwum w formacie zip](https://github.com/saltana67/edm/archive/master.zip) > (dostepne ze strony github pod guzikiem `Clone or download`), po czym rozpakowac samemu i otworzyc w IDE ...
+
+## odswierzanie do najnowszej wersji
+
+1. przejdz do sklonowanego katalogu, np: ~/Devel/micro/Marcinu/arduino/edm/
+
+  ```bash
+  $ cd ~/Devel/micro/Marcinu/arduino/edm
+  ```   
+2. zciagnij zmiany z repozytorium kodu 
+
+  ```bash
+  $ git pull
+  ```
+3. otworz ponownie w Arduino IDE ..
 
 ## biblioteki
 
@@ -41,7 +55,7 @@ Dokumentacja mowi:
 > | Board        | Interrupt Pins       | LED Pin(do not use)|
 > | -------------|----------------------| -------------------|
 > | Arduino Mega | 2, 3, 18, 19, 20, 21 | 13 |
-wiec najlepiej by bylo tak zrobic, a nie na pinach 41,43 ...
+wiec najlepiej by bylo tak zrobic, podwiesic enkoder na ktores z tych pinow ...
  
 ## referencje
 #### [hd44780 arduino lib][]
