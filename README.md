@@ -9,7 +9,7 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 
   ```bash
   $ cd ~/Devel/micro/Marcinu/arduino/
-  ```   
+  ```
 
 2. sklonuj projekt z github'a
 
@@ -32,7 +32,7 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
 
   ```bash
   $ cd ~/Devel/micro/Marcinu/arduino/edm
-  ```   
+  ```
 2. sciagnij zmiany z repozytorium kodu 
 
   ```bash

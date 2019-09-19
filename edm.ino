@@ -17,11 +17,28 @@
 #define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
 
+/* 
+ * helper functions prototypes 
+ */
+
+// print current state to serial
+void inline serialPrintState();
+
+// update LCD content with current values
+void inline updateLCDContent();
+
+// print bit values of a byte at given position
+void inline printBits(int col, int row, byte b);
+
+// print signed integer with max 4 digits at given position, right aligned, blank padded
+void inline printf5d(int col, int row, int d);
+
+
 /**************
  * LCD
  **************/
 hd44780_I2Cexp lcd; // declare lcd object: auto locate & auto config expander chip
-// LCD geometry
+  // LCD geometry
 const int LCD_COLS = 20;
 const int LCD_ROWS = 4;
 
@@ -88,7 +105,7 @@ const int mode_INIT     = 9;  //pseudo mode for starting ...
 
 const int RELAY_PIN     = 49; //  L     0
 
-const int EDM_CURRENT_ADC_PIN = A0;
+const int V_ADC_PIN     = A0;
 
 //constant strings
 //mode labels for displaying
@@ -125,6 +142,10 @@ const String modeLabel[10] = {
 const String label_INFO    = "MACZ(c) EDM  v.00001";
 
 int mode = mode_INIT;
+
+int vMin  = 0;
+int vMax  = 1023;
+int v     = 0;
 
 /*******************************************************/
 void setup()
@@ -174,6 +195,7 @@ void setup()
   
   Serial.begin(9600);
 }
+
 
 //update display content four times per second 
 unsigned long displayUpdateFreq   =   4; 
@@ -228,40 +250,92 @@ void loop() {
     changed = true;
   }
 
-  //print current state to serial id changed 
+  v = analogRead(V_ADC_PIN);
+  
+  //print current state to serial if changed 
   if( changed ) {
+    serialPrintState();
+  }
+  
+  //update lcd display content if necessary
+  updateLCDContent();
+}
+
+/*
+ * helper functions
+ */
+
+// print current state to serial
+void inline serialPrintState() {
     Serial.print(mode);
     Serial.print("\t");
     Serial.print(modeSwitches);
     Serial.print("\t");
     Serial.print(encPosition);
-    Serial.println("");
-  }
-  
+    Serial.println("");  
+}
+
+// update LCD content with current values
+void inline updateLCDContent(){
   //update lcd display content if necessary
   display_elapsed = millis() - display_last_update;
   
   if( display_elapsed > displayUpdatePeriod ) {
-
     //update mode
-    lcd.setCursor(0,2);     //clear old content
-    lcd.print(label_BLANKMODE);
-    lcd.setCursor(0,2);
+    lcd.setCursor(0,1);
     lcd.print(modeLabel[mode]);
 
     //update modeSwitch state
-    lcd.setCursor(0,3);     //clear old content
-    lcd.print("        ");
-    lcd.setCursor(0,3);
-    lcd.print(modeSwitches,BIN);
+    printBits(0,2, modeSwitches);
 
-    //update encPosition display
-    lcd.setCursor(12,3);    //clear old content
-    lcd.print("        ");
-    lcd.setCursor(12,3);    //display new value
-    lcd.print(encPosition, DEC);
+    //update vMin value
+    printf5d(15,1,vMin);
 
+    //update v value
+    printf5d(15,2,v);
+    
+    //update vMax value
+    printf5d(15,3,vMax);
+
+    //update encoder position value
+    printf5d(0,3,encPosition);
+    
     //restart update period
     display_last_update = millis();
-  }
+  }  
+}
+
+// print bit values of a byte at given position
+void inline printBits(int col, int row, byte b){
+    lcd.setCursor(col,row);
+    for( int i = 7; i >= 0; i-- ){
+      if( ((1<<i) & b) != 0 )
+        lcd.print(1);
+      else
+        lcd.print(0);
+    }   
+}
+
+// print signed integer with max 4 digits at given position, right aligned, blank padded
+void inline printf5d(int col, int row, int d){
+    lcd.setCursor(col,row);
+    if( d >= 0 ){
+      lcd.print(" ");
+      if( d < 1000 )
+        lcd.print(" ");
+      if( d < 100 )
+        lcd.print(" ");
+      if( d < 10 )
+        lcd.print(" ");
+    }
+    else {
+      if( d > -1000 )
+        lcd.print(" ");
+      if( d > -100 )
+        lcd.print(" ");
+      if( d > -10 )
+        lcd.print(" ");
+    }
+    
+    lcd.print(d);
 }
