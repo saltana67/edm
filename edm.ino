@@ -17,6 +17,24 @@
 #define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
 
+/*
+ * mode/state functions prototypes
+ */
+
+void inline modeVMinEnter();
+void inline modeVMinExec();
+
+void inline modeVMaxEnter();
+void inline modeVMaxExec();
+
+void inline modeManualEnter(boolean dir);
+void inline modeManualExec();
+
+void inline modeFlushEnter();
+void inline modeFlushExec();
+
+void inline modeZeroExec();
+
 /* 
  * helper functions prototypes 
  */
@@ -141,11 +159,24 @@ const String modeLabel[10] = {
 
 const String label_INFO    = "MACZ(c) EDM  v.00001";
 
-int mode = mode_INIT;
+int mode    = mode_INIT;
 
-int vMin  = 0;
-int vMax  = 1023;
-int v     = 0;
+const int V_MIN = 0     ;//absolut minimal value for v
+const int V_MAX = 1023  ;//absolut maximal value for v
+int       vMin  = V_MIN ;//current lower limit for v 
+int       vMax  = V_MAX ;//current upper limit for v
+int       v     = 0     ;//current v value
+
+const int SPEED_MIN = 0     ;//absolut minimum value  for speed
+const int SPEED_MAX = 1023  ;//absolut maximum value  for speed
+int       zSpeed    = 0     ;//current speed value
+boolean   zUp       = true  ;//current direction
+
+const int FLUSH_MIN = 0     ;//absolut minimal value for flush
+const int FLUSH_MAX = 1023  ;//absolut maximal value for flush
+int       zFlush    = (FLUSH_MAX - FLUSH_MIN)/2    ;//current flush value
+
+int       pos = 0;
 
 /*******************************************************/
 void setup()
@@ -210,10 +241,14 @@ unsigned long display_last_update = 0;
 //millis elapsed since last update
 unsigned long display_elapsed = 0;
 
-byte  modeSwitches    = 0;
-byte  modeSwitchesOld = 0;
+byte    modeSwitches    = 0;
+byte    modeSwitchesOld = 0;
 
-int   oldMode = mode;
+int     oldMode   = mode;
+int     oldZSpeed = zSpeed;
+boolean oldZUp    = zUp;       
+int     oldZFlush = zFlush;
+int     oldPos    = pos;
 
 /*******************************************************/
 void loop() {
@@ -221,9 +256,17 @@ void loop() {
 
   //set to true if something change since last loop iteration
   boolean changed = false;
+
+  //save old state
+  oldMode = mode;
+  modeSwitchesOld = modeSwitches;
+  encOldPosition = encPosition;
+  oldZSpeed  = zSpeed;
+  oldZUp    = zUp;
+  oldZFlush = zFlush;
+  oldPos    = pos;
   
   //check switch position and get new mode 
-  modeSwitchesOld = modeSwitches;
   modeSwitches = ~PINA;
 
   if( modeSwitches != modeSwitchesOld ) {
@@ -234,7 +277,6 @@ void loop() {
       for( int i = 7; i >= 0; i-- ){
         if( modeSwitches & (1<<i) ) {
           if( (modeSwitches & ~(1<<i)) == 0 ){
-            oldMode = mode;
             mode = i;
           }
           break;
@@ -246,11 +288,29 @@ void loop() {
   //get encoder value
   encPosition = enc.read();
   if (encPosition != encOldPosition) {
-    encOldPosition = encPosition;
     changed = true;
   }
 
   v = analogRead(V_ADC_PIN);
+
+  if( mode != oldMode ) {
+    switch(mode) {
+      case mode_VMIN : modeVMinEnter()        ;break;
+      case mode_VMAX : modeVMaxEnter()        ;break;
+      case mode_UP   : modeManualEnter(true)  ;break;
+      case mode_DOWN : modeManualEnter(false) ;break;
+      case mode_FLUSH: modeFlushEnter()       ;break;
+    }
+  }
+
+  switch(mode) {
+    case mode_VMIN : modeVMinExec()   ;break;
+    case mode_VMAX : modeVMaxExec()   ;break;
+    case mode_UP   :
+    case mode_DOWN : modeManualExec() ;break;
+    case mode_FLUSH: modeFlushExec()  ;break;
+    case mode_ZERO : modeZeroExec()   ;break;
+  }
   
   //print current state to serial if changed 
   if( changed ) {
@@ -259,6 +319,98 @@ void loop() {
   
   //update lcd display content if necessary
   updateLCDContent();
+}
+
+/*
+ * mode/state functions
+ */
+
+void inline modeVMinEnter(){
+  encPosition = vMin;
+  enc.write(encPosition);
+}
+void inline modeVMinExec(){
+  if( encPosition != encOldPosition ){
+    if( encPosition < V_MIN ) {
+      encPosition = V_MIN;
+      enc.write(encPosition);
+    }
+    else if( encPosition > V_MAX ){
+      encPosition = V_MAX;
+      enc.write(encPosition);
+    }
+    if( encPosition != encOldPosition ){
+      vMin = encPosition;
+      if( vMin > vMax )
+        vMax = vMin;
+    }
+  }
+}
+void inline modeVMaxEnter(){
+  encPosition = vMax;
+  enc.write(encPosition);
+}
+void inline modeVMaxExec(){
+  if( encPosition != encOldPosition ){
+    if( encPosition < V_MIN ) {
+      encPosition = V_MIN;
+      enc.write(encPosition);
+    }
+    else if( encPosition > V_MAX ){
+      encPosition = V_MAX;
+      enc.write(encPosition);
+    }
+    if( encPosition != encOldPosition ){
+      vMax = encPosition;
+      if( vMax < vMin)
+        vMin = vMax;
+    }
+  }
+}
+
+void inline modeManualEnter(boolean dir){
+  zUp = dir;
+  zSpeed = SPEED_MIN;
+  encPosition = zSpeed;
+  enc.write(encPosition);
+}
+void inline modeManualExec(){
+  if( encPosition != encOldPosition ){
+    if( encPosition < SPEED_MIN ) {
+      encPosition = SPEED_MIN;
+      enc.write(encPosition);
+    }
+    else if( encPosition > SPEED_MAX ){
+      encPosition = SPEED_MAX;
+      enc.write(encPosition);
+    }
+    if( encPosition != encOldPosition ){
+      zSpeed = encPosition;
+    }
+  }
+}
+
+void inline modeFlushEnter(){
+  encPosition = zFlush;
+  enc.write(encPosition);
+}
+void inline modeFlushExec(){
+  if( encPosition != encOldPosition ){
+    if( encPosition < FLUSH_MIN ) {
+      encPosition = FLUSH_MIN;
+      enc.write(encPosition);
+    }
+    else if( encPosition > FLUSH_MAX ){
+      encPosition = FLUSH_MAX;
+      enc.write(encPosition);
+    }
+    if( encPosition != encOldPosition ){
+      zFlush = encPosition;
+    }
+  }
+}
+void inline modeZeroExec(){
+  pos = 0;
 }
 
 /*
@@ -296,6 +448,15 @@ void inline updateLCDContent(){
     
     //update vMax value
     printf5d(15,3,vMax);
+
+    //update zSpeed value
+    printf5d(10,1,zSpeed);
+
+    //update zFlush value
+    printf5d(10,2,zFlush);
+
+    //update pos value
+    printf5d(10,3,pos);
 
     //update encoder position value
     printf5d(0,3,encPosition);
