@@ -17,6 +17,10 @@
 #define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
 
+#include <AccelStepper.h>
+
+#include"timer-api.h"
+
 /*
  * mode/state functions prototypes
  */
@@ -29,6 +33,7 @@ void inline modeVMaxExec();
 
 void inline modeManualEnter(boolean dir);
 void inline modeManualExec();
+void inline modeManualLeave(boolean dirUp);
 
 void inline modeFlushEnter();
 void inline modeFlushExec();
@@ -50,6 +55,12 @@ void inline printBits(int col, int row, byte b);
 
 // print signed integer with max 4 digits at given position, right aligned, blank padded
 void inline printf5d(int col, int row, int d);
+
+// print signed integer with max 8 digits at given position, right aligned, blank padded
+void inline printf9d(int col, int row, int d);
+
+// print unsigned long with max 3 digits at given position, right aligned, blank padded
+void inline printf3ul(int col, int row, unsigned long d);
 
 
 /**************
@@ -76,6 +87,34 @@ Encoder enc(encAPin, encBPin);
 
 long encPosition    = -999;
 long encOldPosition = -999;
+
+
+/**************
+ * stepper
+ **************/
+const uint8_t STEPPER_PIN_STEP  = 42;
+const uint8_t STEPPER_PIN_DIR   = 40; 
+//AccelStepper::DIRECTION_CCW
+//AccelStepper::DIRECTION_CW
+
+AccelStepper stepper(AccelStepper::DRIVER, STEPPER_PIN_STEP, STEPPER_PIN_DIR);
+
+unsigned int  rpmMax    = 150;//desired max rotations per minute
+/*
+unsigned float  rotationAnglePerStep = 1.8; //degree per step
+ */
+unsigned int  stepsPerRevolution  = 200;//stepper full steps per one rotation: motor resolution
+unsigned int  subSteps  = 1;  //partial steps per full step: stepper driver resolution
+
+float   rps           = ((float)rpmMax)/((float)60); //rotations per second
+
+float   zSpeedMax     = rps * (float)(stepsPerRevolution * subSteps); //steps per second
+float   zAcceleration = zSpeedMax; //steps per second per second, one second to max speed
+
+//const long POS_MAX_UP   = -2147483648L;
+//const long POS_MAX_DOWN = 2147483647L;
+const long POS_MAX_UP   = -1000000L;
+const long POS_MAX_DOWN = 1000000L;
 
 
 /**************
@@ -168,7 +207,7 @@ int       vMax  = V_MAX ;//current upper limit for v
 int       v     = 0     ;//current v value
 
 const int SPEED_MIN = 0     ;//absolut minimum value  for speed
-const int SPEED_MAX = 1023  ;//absolut maximum value  for speed
+const int SPEED_MAX = 128   ;//absolut maximum value  for speed
 int       zSpeed    = 0     ;//current speed value
 boolean   zUp       = true  ;//current direction
 
@@ -225,6 +264,8 @@ void setup()
   mode = mode_INIT;
   
   Serial.begin(9600);
+
+  timer_init_ISR_10KHz(TIMER_DEFAULT);
 }
 
 
@@ -249,6 +290,11 @@ int     oldZSpeed = zSpeed;
 boolean oldZUp    = zUp;       
 int     oldZFlush = zFlush;
 int     oldPos    = pos;
+
+unsigned long lastLoopStart = micros();
+unsigned long elapsed = 0;
+unsigned long loopTime = 0;
+unsigned int  loops = 0;
 
 /*******************************************************/
 void loop() {
@@ -292,8 +338,17 @@ void loop() {
   }
 
   v = analogRead(V_ADC_PIN);
-
+  
+  pos = stepper.currentPosition();
+  
   if( mode != oldMode ) {
+    switch(oldMode) {
+      //case mode_VMIN : modeVMinEnter()        ;break;
+      //case mode_VMAX : modeVMaxEnter()        ;break;
+      case mode_UP   : modeManualLeave(true)  ;break;
+      case mode_DOWN : modeManualLeave(false) ;break;
+      //case mode_FLUSH: modeFlushEnter()       ;break;
+    }
     switch(mode) {
       case mode_VMIN : modeVMinEnter()        ;break;
       case mode_VMAX : modeVMaxEnter()        ;break;
@@ -319,6 +374,12 @@ void loop() {
   
   //update lcd display content if necessary
   updateLCDContent();
+
+  //calcAvgLoopTime();
+}
+
+void timer_handle_interrupts(int timer) {
+  stepper.run();
 }
 
 /*
@@ -368,11 +429,19 @@ void inline modeVMaxExec(){
   }
 }
 
-void inline modeManualEnter(boolean dir){
-  zUp = dir;
+void inline modeManualEnter(boolean dirUp){
+  zUp = dirUp;
   zSpeed = SPEED_MIN;
   encPosition = zSpeed;
   enc.write(encPosition);
+
+  stepper.setMaxSpeed(0L);
+  //stepper.setMaxSpeed(zSpeedMax);
+  stepper.setAcceleration(zAcceleration);
+  if( dirUp )
+    stepper.moveTo(POS_MAX_UP);
+  else    
+    stepper.moveTo(POS_MAX_DOWN);
 }
 void inline modeManualExec(){
   if( encPosition != encOldPosition ){
@@ -386,8 +455,14 @@ void inline modeManualExec(){
     }
     if( encPosition != encOldPosition ){
       zSpeed = encPosition;
+      float zz = zSpeedMax * (((float)(encPosition - SPEED_MIN))/((float)SPEED_MAX));
+      stepper.setMaxSpeed(zz);
     }
   }
+  //stepper.run();
+}
+void inline modeManualLeave(boolean dirUp){
+  stepper.setMaxSpeed(0L);
 }
 
 void inline modeFlushEnter(){
@@ -411,11 +486,26 @@ void inline modeFlushExec(){
 }
 void inline modeZeroExec(){
   pos = 0;
+  stepper.setCurrentPosition(0L);
 }
 
 /*
  * helper functions
  */
+
+void inline calcAvgLoopTime(){
+  //calc average loop time, very stupid implementation really
+  //delayMicroseconds(200); //just for testing avg loop time calculations
+  elapsed += (micros() - lastLoopStart);
+  //loopTime = (micros() - lastLoopStart);
+  loops++;
+  if( loops >= 256 ){
+    loopTime = (elapsed/256);
+    loops = 0;
+    elapsed = 0;    
+  }
+  lastLoopStart = micros();  
+}
 
 // print current state to serial
 void inline serialPrintState() {
@@ -456,11 +546,15 @@ void inline updateLCDContent(){
     printf5d(10,2,zFlush);
 
     //update pos value
-    printf5d(10,3,pos);
+//    printf5d(10,3,pos);
+    printf9d(6,3,pos);
 
     //update encoder position value
     printf5d(0,3,encPosition);
-    
+
+//    //update loop period value
+//    printf3ul(6,3,loopTime);
+
     //restart update period
     display_last_update = millis();
   }  
@@ -497,6 +591,58 @@ void inline printf5d(int col, int row, int d){
       if( d > -10 )
         lcd.print(" ");
     }
+    
+    lcd.print(d);
+}
+
+// print signed integer with max 8 digits at given position, right aligned, blank padded
+void inline printf9d(int col, int row, int d){
+    lcd.setCursor(col,row);
+    if( d >= 0 ){
+      lcd.print(" ");
+      if( d < 10000000 )
+        lcd.print(" ");
+      if( d < 1000000 )
+        lcd.print(" ");
+      if( d < 100000 )
+        lcd.print(" ");
+      if( d < 10000 )
+        lcd.print(" ");
+      if( d < 1000 )
+        lcd.print(" ");
+      if( d < 100 )
+        lcd.print(" ");
+      if( d < 10 )
+        lcd.print(" ");
+    }
+    else {
+      if( d > -10000000 )
+        lcd.print(" ");
+      if( d > -1000000 )
+        lcd.print(" ");
+      if( d > -100000 )
+        lcd.print(" ");
+      if( d > -10000 )
+        lcd.print(" ");
+      if( d > -1000 )
+        lcd.print(" ");
+      if( d > -100 )
+        lcd.print(" ");
+      if( d > -10 )
+        lcd.print(" ");
+    }
+    
+    lcd.print(d);
+}
+
+// print unsigned long with max 3 digits at given position, right aligned, blank padded
+void inline printf3ul(int col, int row, unsigned long d){
+    lcd.setCursor(col,row);
+
+      if( d < 100 )
+        lcd.print(" ");
+      if( d < 10 )
+        lcd.print(" ");
     
     lcd.print(d);
 }
