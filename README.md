@@ -40,9 +40,15 @@ Electrical discharge machining' by Marcin Czernik (&amp; Adam Ziemkiewicz)
   ```
 3. otworz ponownie w Arduino IDE ..
 
+## implementacja
+
+TODO: Najwazniejsza funcja: tryb pracy _auto_.
+
+
+
 ## biblioteki
 
-### [hd44780 _(Bill Perry wersja 1.1.0)_][hd44780 lib] : sterowanie lcd 4x20 znakow przez sterownik oparty na hd44780 podlaczony do magistrali I2C
+### [hd44780 _(Bill Perry wersja 1.1.0)_][hd44780 lib] : sterowanie wyświtlaczem lcd 4x20 znakow przez sterownik oparty na hd44780 podłaczony do magistrali I2C
 
 * [sketch diagnostyczny][I2CexpDiag]
 * [sketch przykladowy: wlasne/niestandardowe znaki][hd44780 CustomChars example]
@@ -56,10 +62,17 @@ Dokumentacja mowi:
 > | -------------|----------------------| -------------------|
 > | Arduino Mega | 2, 3, 18, 19, 20, 21 | 13 |
 wiec najlepiej by bylo tak zrobic, podwiesic enkoder na ktores z tych pinow ...
- 
+
+
+### [AccelStepper _(Mike McCauley wersja 1.58.0)_][MikeMcCauley AccelStepper] : sterowanie silnikiem krokowym
+
+### [arduino-timer-api _(Anton wersja 0.1.0)_][sadr0b0t arduino-timer-api] : timer generujący przerwania  
+
 ## referencje
 #### [bilioteka hd44780 (Bill Perry) dla arduino][hd44780 arduino lib] _([kod @github][hd44780 lib])_
 #### [bilioteka Encoder (Paul Stoffregen) dla arduino][PaulStoffregen Encoder] _([kod @github][PaulStoffregen Encoder code])_
+#### [bilioteka AccelStepper (Mike McCauley) dla arduino][MikeMcCauley AccelStepper]
+#### [bilioteka arduino-timer-api (Anton) dla arduino][sadr0b0t arduino-timer-api]
 
 
 ### linki 
@@ -84,7 +97,13 @@ wiec najlepiej by bylo tak zrobic, podwiesic enkoder na ktores z tych pinow ...
 				"Quadrature Encoder Library for Arduino by Paul Stoffregen"
 
 [PaulStoffregen Encoder code]:	https://github.com/PaulStoffregen/Encoder
-				"Quadrature Encoder Library for Arduino Paul Stoffregen @gtihub"
+				"Quadrature Encoder Library for Arduino by Paul Stoffregen @gtihub"
+
+[MikeMcCauley AccelStepper]:	http://www.airspayce.com/mikem/arduino/AccelStepper/
+				"AccelStepper library for Arduino by Mike McCauley"
+
+[sadr0b0t arduino-timer-api]:	https://github.com/sadr0b0t/arduino-timer-api
+				"timer interrupt library for Arduino by Anton (sadr0b0t @ github)"
 	
 #### polskie znaki diakrytyczne
 
