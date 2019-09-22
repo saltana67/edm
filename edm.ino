@@ -35,6 +35,10 @@ void inline modeManualEnter(boolean dir);
 void inline modeManualExec();
 void inline modeManualLeave(boolean dirUp);
 
+void inline modeAutoEnter();
+void inline modeAutoExec();
+void inline modeAutoLeave();
+
 void inline modeFlushEnter();
 void inline modeFlushExec();
 
@@ -99,23 +103,28 @@ const uint8_t STEPPER_PIN_DIR   = 40;
 
 AccelStepper stepper(AccelStepper::DRIVER, STEPPER_PIN_STEP, STEPPER_PIN_DIR);
 
-unsigned int  rpmMax    = 150;//desired max rotations per minute
+unsigned int  rpmMax      = 150;//desired max rotations per minute
+unsigned int  autoRpmMax  = 2;  //desired max rotations per minute in auto mode
 /*
 unsigned float  rotationAnglePerStep = 1.8; //degree per step
  */
 unsigned int  stepsPerRevolution  = 200;//stepper full steps per one rotation: motor resolution
-unsigned int  subSteps  = 1;  //partial steps per full step: stepper driver resolution
+unsigned int  subSteps      = 1;  //partial steps per full step: stepper driver resolution
+unsigned int  autoSubSteps  = 1;  //partial steps per full step in auto mode: stepper driver resolution
 
 float   rps           = ((float)rpmMax)/((float)60); //rotations per second
+float   autoRps       = ((float)autoRpmMax)/((float)60); //rotations per second in auto mode
 
 float   zSpeedMax     = rps * (float)(stepsPerRevolution * subSteps); //steps per second
 float   zAcceleration = zSpeedMax; //steps per second per second, one second to max speed
+
+float   autoSpeedMax     = autoRps * (float)(stepsPerRevolution * autoSubSteps); //steps per second in auto mode
+float   autoAcceleration = autoSpeedMax * 10; //00; //steps per second per second, one second to max speed in auto mode
 
 //const long POS_MAX_UP   = -2147483648L;
 //const long POS_MAX_DOWN = 2147483647L;
 const long POS_MAX_UP   = -1000000L;
 const long POS_MAX_DOWN = 1000000L;
-
 
 /**************
  * mode switch
@@ -168,14 +177,14 @@ const int V_ADC_PIN     = A0;
 //mode labels for displaying
 const String label_INIT     = "INIT...";
 const String label_RESERVE  = "RESERVE";
-const String label_DOWN     = "  UP   ";  
-const String label_UP       = " DOWN  ";
-const String label_AUTO     = " AUTO  ";
-const String label_STOP     = " STOP  ";
-const String label_ZERO     = " ZERO  ";
-const String label_VMAX     = " VMAX  ";
-const String label_VMIN     = " VMIN  ";
-const String label_FLUSH    = " FLUSH ";
+const String label_DOWN     = "UP     ";  
+const String label_UP       = "DOWN   ";
+const String label_AUTO     = "AUTO   ";
+const String label_STOP     = "STOP   ";
+const String label_ZERO     = "ZERO   ";
+const String label_VMAX     = "VMAX   ";
+const String label_VMIN     = "VMIN   ";
+const String label_FLUSH    = "FLUSH  ";
 
 const String label_BLANKMODE= "       ";
 
@@ -202,8 +211,8 @@ int mode    = mode_INIT;
 
 const int V_MIN = 0     ;//absolut minimal value for v
 const int V_MAX = 1023  ;//absolut maximal value for v
-int       vMin  = V_MIN ;//current lower limit for v 
-int       vMax  = V_MAX ;//current upper limit for v
+int       vMin  = 500;//V_MAX/3    ;//current lower limit for v 
+int       vMax  = 510;//V_MAX-vMin ;//current upper limit for v
 int       v     = 0     ;//current v value
 
 const int SPEED_MIN = 0     ;//absolut minimum value  for speed
@@ -213,7 +222,7 @@ boolean   zUp       = true  ;//current direction
 
 const int FLUSH_MIN = 0     ;//absolut minimal value for flush
 const int FLUSH_MAX = 1023  ;//absolut maximal value for flush
-int       zFlush    = (FLUSH_MAX - FLUSH_MIN)/2    ;//current flush value
+int       zFlush    = (FLUSH_MAX - FLUSH_MIN)/20    ;//current flush value
 
 int       pos = 0;
 
@@ -263,9 +272,14 @@ void setup()
 
   mode = mode_INIT;
   
-  Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.print("autoSpeedMax    : ");Serial.println(autoSpeedMax);
+  Serial.print("autoAcceleration: ");Serial.println(autoAcceleration);
 
-  timer_init_ISR_10KHz(TIMER_DEFAULT);
+  Serial.print(mode);
+
+  v = ((vMax + 1) > V_MAX ? V_MAX : (vMax + 1)); //vMin + ((vMax - vMin) / 2);
+  timer_init_ISR_2KHz(TIMER_DEFAULT);
 }
 
 
@@ -295,6 +309,16 @@ unsigned long lastLoopStart = micros();
 unsigned long elapsed = 0;
 unsigned long loopTime = 0;
 unsigned int  loops = 0;
+
+#define isReadUFaked
+
+#ifdef isReadUFaked
+#define readU(x) readUFaked(x)
+#else
+#define readU(x) analogRead(x)
+#endif
+
+int fakedU = ((vMax + 1) > V_MAX ? V_MAX : (vMax + 1)); //vMin + ((vMax - vMin) / 2);
 
 /*******************************************************/
 void loop() {
@@ -337,23 +361,22 @@ void loop() {
     changed = true;
   }
 
-  v = analogRead(V_ADC_PIN);
+  v = readU(V_ADC_PIN);
   
   pos = stepper.currentPosition();
   
   if( mode != oldMode ) {
     switch(oldMode) {
-      //case mode_VMIN : modeVMinEnter()        ;break;
-      //case mode_VMAX : modeVMaxEnter()        ;break;
       case mode_UP   : modeManualLeave(true)  ;break;
       case mode_DOWN : modeManualLeave(false) ;break;
-      //case mode_FLUSH: modeFlushEnter()       ;break;
+      case mode_AUTO : modeAutoLeave()        ;break;
     }
     switch(mode) {
       case mode_VMIN : modeVMinEnter()        ;break;
       case mode_VMAX : modeVMaxEnter()        ;break;
       case mode_UP   : modeManualEnter(true)  ;break;
       case mode_DOWN : modeManualEnter(false) ;break;
+      case mode_AUTO : modeAutoEnter()        ;break;
       case mode_FLUSH: modeFlushEnter()       ;break;
     }
   }
@@ -363,6 +386,7 @@ void loop() {
     case mode_VMAX : modeVMaxExec()   ;break;
     case mode_UP   :
     case mode_DOWN : modeManualExec() ;break;
+    case mode_AUTO : modeAutoExec()   ;break;
     case mode_FLUSH: modeFlushExec()  ;break;
     case mode_ZERO : modeZeroExec()   ;break;
   }
@@ -436,8 +460,8 @@ void inline modeManualEnter(boolean dirUp){
   enc.write(encPosition);
 
   stepper.setMaxSpeed(0L);
-  //stepper.setMaxSpeed(zSpeedMax);
   stepper.setAcceleration(zAcceleration);
+  
   if( dirUp )
     stepper.moveTo(POS_MAX_UP);
   else    
@@ -462,7 +486,139 @@ void inline modeManualExec(){
   //stepper.run();
 }
 void inline modeManualLeave(boolean dirUp){
+  stepper.setSpeed(0l);
   stepper.setMaxSpeed(0L);
+  stepper.stop();
+}
+
+// stepper move values
+const long ONE_STEP_UP   = 1L;
+const long ONE_STEP_DOWN =-1L;
+
+long workingPos = zFlush;
+long nextFlush  = zFlush;
+
+const int WORKING            = 0;
+const int FLUSHING_GOING_UP  = 1;
+const int FLUSHING_WAITING   = 2;
+const int FLUSHING_RETURNING = 3;
+
+int autoMode = WORKING;
+
+void inline modeAutoWorkingExec();
+void inline modeAutoFlushingGoingUpExec();
+void inline modeAutoFlushingWaitingExec();
+void inline modeAutoFlushingReturningExec();
+
+void inline modeAutoEnter(){
+  Serial.println("modeAutoEnter");
+  fakedU = ((vMax + 1) > V_MAX ? V_MAX : (vMax + 1)); //vMin + ((vMax - vMin) / 2);
+  enc.write(fakedU);
+  autoMode = WORKING;
+  workingPos = stepper.currentPosition();
+
+  stepper.setMaxSpeed(autoSpeedMax);
+  stepper.setAcceleration(autoAcceleration);
+  stepper.moveTo(workingPos);
+  nextFlush  = workingPos - zFlush;
+}
+
+void inline modeAutoExec(){
+  switch(autoMode) {
+    case WORKING            : modeAutoWorkingExec()           ; break;
+    case FLUSHING_GOING_UP  : modeAutoFlushingGoingUpExec()   ; break;
+    case FLUSHING_WAITING   : modeAutoFlushingWaitingExec()   ; break;
+    case FLUSHING_RETURNING : modeAutoFlushingReturningExec() ; break;
+  }
+}
+void inline modeAutoLeave(){
+  Serial.println("modeAutoLeave"); 
+  stepper.setSpeed(0l);
+  stepper.setMaxSpeed(0L);
+  stepper.stop();
+}
+
+void inline modeAutoWorkingExec(){
+  //Serial.println("modeAutoWorkingExec"); 
+  workingPos = stepper.currentPosition();
+  boolean isRunning = stepper.isRunning();
+  long tp = stepper.targetPosition();
+  long d2g = stepper.distanceToGo();
+  float s = stepper.speed();
+  
+  //Serial.print("autoWorking | workingPos | nextFlush | v | vMin | vMax | isRunning | v > vMax | v < vMin :  "); 
+//  Serial.print("autoWorking | workingPos | tp | d2g | speed | isRunning | nextFlush  | v > vMax | v < vMin :  "); 
+//  Serial.print(workingPos); 
+//  Serial.print(" | "); 
+//  Serial.print(tp);
+//  Serial.print(" | "); 
+//  Serial.print(d2g);
+//  Serial.print(" | "); 
+//  Serial.print(s);
+//  Serial.print(" | "); 
+//  Serial.print(isRunning);
+//  Serial.print(" | "); 
+//  Serial.print(nextFlush);
+////  Serial.print(" | "); 
+////  Serial.print(v);
+////  Serial.print(" | "); 
+////  Serial.print(vMin);
+////  Serial.print(" | "); 
+////  Serial.print(vMax);
+//  Serial.print(" | "); 
+//  Serial.print((v > vMax));
+//  Serial.print(" | "); 
+//  Serial.print((v < vMin));
+//  Serial.println();
+   
+  if( workingPos <= nextFlush ){
+    //enter AutoFlush sub mode
+    autoMode = FLUSHING_GOING_UP;
+    
+    stepper.setMaxSpeed(zSpeedMax);
+    stepper.setAcceleration(zAcceleration);
+    stepper.moveTo(0L);
+    return;    
+  }
+  if( isRunning /*stepper.isRunning()*/ )
+    return; //wait in this state till stepper performed last one step movement and stopped
+    
+  if( v > vMax )
+    stepper.move(ONE_STEP_DOWN);  
+  else if( v < vMin )
+    stepper.move(ONE_STEP_UP);
+}
+void inline modeAutoFlushingGoingUpExec(){
+  boolean isRunning = stepper.isRunning();
+  Serial.print("modeAutoFlushingGoingUpExec: isRunning: "); 
+  Serial.print(isRunning); 
+  Serial.println(); 
+  //if( stepper.isRunning() )
+  if( isRunning )
+    return; //wait in this state till stepper preformed movement to zero and stopped
+  //enter returning sub mode
+  autoMode = FLUSHING_WAITING;
+}
+void inline modeAutoFlushingWaitingExec(){
+  Serial.println("modeAutoFlushingWaitingExec"); 
+  //here we would wait for flushing to end
+  //enter returning sub mode
+  autoMode = FLUSHING_RETURNING;
+  stepper.moveTo(workingPos);  //move back to last position in auto working mode  
+}
+void inline modeAutoFlushingReturningExec(){
+  boolean isRunning = stepper.isRunning();
+  Serial.print("modeAutoFlushingReturningExec: isRunning: "); 
+  Serial.print(isRunning); 
+  Serial.println(); 
+  //if( stepper.isRunning() )
+  if( isRunning )
+    return; //wait in this state till stepper performed movement to last position and stopped
+  //enter working sub mode
+  autoMode = WORKING;
+  stepper.setMaxSpeed(autoSpeedMax);
+  stepper.setAcceleration(autoAcceleration);
+  nextFlush  = stepper.currentPosition() - zFlush;
 }
 
 void inline modeFlushEnter(){
@@ -488,6 +644,7 @@ void inline modeZeroExec(){
   pos = 0;
   stepper.setCurrentPosition(0L);
 }
+
 
 /*
  * helper functions
@@ -568,7 +725,7 @@ void inline printBits(int col, int row, byte b){
         lcd.print(1);
       else
         lcd.print(0);
-    }   
+    }
 }
 
 // print signed integer with max 4 digits at given position, right aligned, blank padded
@@ -645,4 +802,23 @@ void inline printf3ul(int col, int row, unsigned long d){
         lcd.print(" ");
     
     lcd.print(d);
+}
+
+ 
+int readUFaked(int pin){
+  delayMicroseconds(150);
+  //delay(250);
+  if( (mode != mode_AUTO) || (autoMode != WORKING) ){
+    return fakedU;
+  }
+  if( encPosition < V_MIN ) {
+      encPosition = V_MIN;
+      enc.write(encPosition);
+  }
+  else if( encPosition > V_MAX ){
+      encPosition = V_MAX;
+      enc.write(encPosition);
+  }
+  fakedU = encPosition;
+  return fakedU;
 }
