@@ -14,7 +14,7 @@
 // This optional setting causes Encoder to use more optimized code,
 // It must be defined before Encoder.h is included.
 // comment next line out in case of problems.
-#define ENCODER_OPTIMIZE_INTERRUPTS
+//#define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
 
 #include <AccelStepper.h>
@@ -24,6 +24,8 @@
 /*
  * mode/state functions prototypes
  */
+
+void inline modeStopExec();
 
 void inline modeVMinEnter();
 void inline modeVMinExec();
@@ -103,14 +105,14 @@ const uint8_t STEPPER_PIN_DIR   = 40;
 
 AccelStepper stepper(AccelStepper::DRIVER, STEPPER_PIN_STEP, STEPPER_PIN_DIR);
 
-unsigned int  rpmMax      = 150;//desired max rotations per minute
-unsigned int  autoRpmMax  = 2;  //desired max rotations per minute in auto mode
+float  rpmMax      = 150;//desired max rotations per minute
+float  autoRpmMax  = 1.0;  //desired max rotations per minute in auto mode
 /*
 unsigned float  rotationAnglePerStep = 1.8; //degree per step
  */
 unsigned int  stepsPerRevolution  = 200;//stepper full steps per one rotation: motor resolution
-unsigned int  subSteps      = 1;  //partial steps per full step: stepper driver resolution
-unsigned int  autoSubSteps  = 1;  //partial steps per full step in auto mode: stepper driver resolution
+unsigned int  subSteps      = 4;        //partial steps per full step: stepper driver resolution
+unsigned int  autoSubSteps  = subSteps; //partial steps per full step in auto mode: stepper driver resolution
 
 float   rps           = ((float)rpmMax)/((float)60); //rotations per second
 float   autoRps       = ((float)autoRpmMax)/((float)60); //rotations per second in auto mode
@@ -188,6 +190,8 @@ const String label_FLUSH    = "FLUSH  ";
 
 const String label_BLANKMODE= "       ";
 
+const char RIGHT_ARROW = B01111110; 
+
 const String modeLabel[10] = {
   /*0: mode_ZERO*/     label_ZERO    ,
   /*1: mode_RESERVE*/  label_RESERVE ,
@@ -211,12 +215,12 @@ int mode    = mode_INIT;
 
 const int V_MIN = 0     ;//absolut minimal value for v
 const int V_MAX = 1023  ;//absolut maximal value for v
-int       vMin  = 500;//V_MAX/3    ;//current lower limit for v 
-int       vMax  = 510;//V_MAX-vMin ;//current upper limit for v
+int       vMin  = 400;//V_MAX/3    ;//current lower limit for v 
+int       vMax  = 600;//V_MAX-vMin ;//current upper limit for v
 int       v     = 0     ;//current v value
 
 const int SPEED_MIN = 0     ;//absolut minimum value  for speed
-const int SPEED_MAX = 128   ;//absolut maximum value  for speed
+const int SPEED_MAX = 127   ;//absolut maximum value  for speed
 int       zSpeed    = 0     ;//current speed value
 boolean   zUp       = true  ;//current direction
 
@@ -272,14 +276,18 @@ void setup()
 
   mode = mode_INIT;
   
+  //Serial.begin(9600);
+  //Serial.begin(57600);
   Serial.begin(115200);
+  Serial.print("zSpeedMax    : ");Serial.println(zSpeedMax);
+  Serial.print("zAcceleration: ");Serial.println(zAcceleration);
   Serial.print("autoSpeedMax    : ");Serial.println(autoSpeedMax);
   Serial.print("autoAcceleration: ");Serial.println(autoAcceleration);
 
   Serial.print(mode);
 
   v = ((vMax + 1) > V_MAX ? V_MAX : (vMax + 1)); //vMin + ((vMax - vMin) / 2);
-  timer_init_ISR_2KHz(TIMER_DEFAULT);
+  timer_init_ISR_1KHz(TIMER_DEFAULT);
 }
 
 
@@ -296,8 +304,8 @@ unsigned long display_last_update = 0;
 //millis elapsed since last update
 unsigned long display_elapsed = 0;
 
-byte    modeSwitches    = 0;
-byte    modeSwitchesOld = 0;
+word    modeSwitches    = 0;
+word    modeSwitchesOld = 0;
 
 int     oldMode   = mode;
 int     oldZSpeed = zSpeed;
@@ -310,7 +318,7 @@ unsigned long elapsed = 0;
 unsigned long loopTime = 0;
 unsigned int  loops = 0;
 
-#define isReadUFaked
+//#define isReadUFaked
 
 #ifdef isReadUFaked
 #define readU(x) readUFaked(x)
@@ -336,15 +344,18 @@ void loop() {
   oldZFlush = zFlush;
   oldPos    = pos;
   
-  //check switch position and get new mode 
-  modeSwitches = ~PINA;
-
+  //check switch position and get new mode
+  byte swLo = ~PINA;
+  byte swHi = ((~PINC)&(1<<SWBIT_STOP))>>SWBIT_STOP;
+  
+  modeSwitches = word(swHi,swLo);
+   
   if( modeSwitches != modeSwitchesOld ) {
     changed = true;
     if( modeSwitches == 0 )
        ;//do nothing for now
     else {
-      for( int i = 7; i >= 0; i-- ){
+      for( int i = 8; i >= 0; i-- ){
         if( modeSwitches & (1<<i) ) {
           if( (modeSwitches & ~(1<<i)) == 0 ){
             mode = i;
@@ -389,6 +400,7 @@ void loop() {
     case mode_AUTO : modeAutoExec()   ;break;
     case mode_FLUSH: modeFlushExec()  ;break;
     case mode_ZERO : modeZeroExec()   ;break;
+    case mode_STOP : modeStopExec()   ;break;
   }
   
   //print current state to serial if changed 
@@ -409,6 +421,12 @@ void timer_handle_interrupts(int timer) {
 /*
  * mode/state functions
  */
+
+void inline modeStopExec(){
+  stepper.setSpeed(0l);
+  stepper.setMaxSpeed(0L);
+  stepper.stop();
+}
 
 void inline modeVMinEnter(){
   encPosition = vMin;
@@ -456,10 +474,12 @@ void inline modeVMaxExec(){
 void inline modeManualEnter(boolean dirUp){
   zUp = dirUp;
   zSpeed = SPEED_MIN;
+  //zSpeed = SPEED_MAX; //SPEED_MIN;
   encPosition = zSpeed;
   enc.write(encPosition);
 
   stepper.setMaxSpeed(0L);
+  //stepper.setMaxSpeed(zSpeedMax /*0L*/);
   stepper.setAcceleration(zAcceleration);
   
   if( dirUp )
@@ -512,8 +532,12 @@ void inline modeAutoFlushingReturningExec();
 
 void inline modeAutoEnter(){
   Serial.println("modeAutoEnter");
+
+#ifdef isReadUFaked 
   fakedU = ((vMax + 1) > V_MAX ? V_MAX : (vMax + 1)); //vMin + ((vMax - vMin) / 2);
   enc.write(fakedU);
+#endif
+
   autoMode = WORKING;
   workingPos = stepper.currentPosition();
 
@@ -714,6 +738,11 @@ void inline updateLCDContent(){
 
     //restart update period
     display_last_update = millis();
+
+//    switch(mode) {
+//      case mode_VMIN:  lcd.setCursor(15,1); lcd.write(RIGHT_ARROW);lcd.setCursor(15,1); lcd.blink(); break; 
+//      default: lcd.noBlink();
+//    }
   }  
 }
 
