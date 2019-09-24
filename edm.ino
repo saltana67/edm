@@ -125,8 +125,8 @@ float   autoAcceleration = autoSpeedMax * 10; //00; //steps per second per secon
 
 //const long POS_MAX_UP   = -2147483648L;
 //const long POS_MAX_DOWN = 2147483647L;
-const long POS_MAX_UP   = -1000000L;
-const long POS_MAX_DOWN = 1000000L;
+const long POS_MAX_UP   = -10000000L;
+const long POS_MAX_DOWN =  10000000L;
 
 /**************
  * mode switch
@@ -540,7 +540,6 @@ void inline modeAutoEnter(){
 
   autoMode = WORKING;
   workingPos = stepper.currentPosition();
-
   stepper.setMaxSpeed(autoSpeedMax);
   stepper.setAcceleration(autoAcceleration);
   stepper.moveTo(workingPos);
@@ -601,7 +600,7 @@ void inline modeAutoWorkingExec(){
     
     stepper.setMaxSpeed(zSpeedMax);
     stepper.setAcceleration(zAcceleration);
-    stepper.moveTo(0L);
+    stepper.moveTo((workingPos + zFlush) > 0 ? (workingPos + zFlush) : 0);//move at least zFlash steps back
     return;    
   }
   if( isRunning /*stepper.isRunning()*/ )
@@ -609,8 +608,11 @@ void inline modeAutoWorkingExec(){
     
   if( v > vMax )
     stepper.move(ONE_STEP_DOWN);  
-  else if( v < vMin )
+  else if( v < vMin ){
     stepper.move(ONE_STEP_UP);
+    nextFlush++; //pull nextFlush position with us up, 
+                 //so we always flush after zFlush downward steps
+  }
 }
 void inline modeAutoFlushingGoingUpExec(){
   boolean isRunning = stepper.isRunning();
