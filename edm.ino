@@ -506,6 +506,7 @@ void inline modeManualExec(){
   //stepper.run();
 }
 void inline modeManualLeave(boolean dirUp){
+  (void)(dirUp);//unused
   stepper.setSpeed(0l);
   stepper.setMaxSpeed(0L);
   stepper.stop();
@@ -606,13 +607,13 @@ void inline modeAutoWorkingExec(){
   if( isRunning /*stepper.isRunning()*/ )
     return; //wait in this state till stepper performed last one step movement and stopped
     
-  if( v > vMax )
-    stepper.move(ONE_STEP_DOWN);  
-  else if( v < vMin ){
+  if( v > vMax ){
     stepper.move(ONE_STEP_UP);
     nextFlush++; //pull nextFlush position with us up, 
                  //so we always flush after zFlush downward steps
   }
+  else if( v < vMin )
+    stepper.move(ONE_STEP_DOWN);  
 }
 void inline modeAutoFlushingGoingUpExec(){
   boolean isRunning = stepper.isRunning();
@@ -837,6 +838,7 @@ void inline printf3ul(int col, int row, unsigned long d){
 
  
 int readUFaked(int pin){
+  (void)(pin);//unused 
   delayMicroseconds(150);
   //delay(250);
   if( (mode != mode_AUTO) || (autoMode != WORKING) ){
