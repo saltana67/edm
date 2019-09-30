@@ -209,7 +209,7 @@ const String modeLabel[10] = {
                             //0         1         
                             //01234567890123456789
 
-const String label_INFO    = "MACZ(c) EDM  v.00002";
+const String label_INFO    = "MACZ(c) EDM  v.00003";
 
 int mode    = mode_INIT;
 
@@ -608,12 +608,13 @@ void inline modeAutoWorkingExec(){
     return; //wait in this state till stepper performed last one step movement and stopped
     
   if( v > vMax ){
+    stepper.move(ONE_STEP_DOWN);  
+  }
+  else if( v < vMin ){
     stepper.move(ONE_STEP_UP);
-    nextFlush++; //pull nextFlush position with us up, 
+    nextFlush++; //pull up nextFlush position with us, 
                  //so we always flush after zFlush downward steps
   }
-  else if( v < vMin )
-    stepper.move(ONE_STEP_DOWN);  
 }
 void inline modeAutoFlushingGoingUpExec(){
   boolean isRunning = stepper.isRunning();
