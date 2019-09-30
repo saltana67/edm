@@ -209,7 +209,7 @@ const String modeLabel[10] = {
                             //0         1         
                             //01234567890123456789
 
-const String label_INFO    = "MACZ(c) EDM  v.00001";
+const String label_INFO    = "MACZ(c) EDM  v.00002";
 
 int mode    = mode_INIT;
 
