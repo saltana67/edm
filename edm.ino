@@ -9,6 +9,8 @@
 
 const boolean directionInvert = false; //set to true to invert stepper direction
 
+//#define USE_SERIAL //uncomment to print debug messages to Serial
+
 #include <Wire.h>
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
@@ -123,7 +125,7 @@ float   zSpeedMax     = rps * (float)(stepsPerRevolution * subSteps); //steps pe
 float   zAcceleration = zSpeedMax; //steps per second per second, one second to max speed
 
 float   autoSpeedMax     = autoRps * (float)(stepsPerRevolution * autoSubSteps); //steps per second in auto mode
-float   autoAcceleration = autoSpeedMax * 10; //00; //steps per second per second, one second to max speed in auto mode
+float   autoAcceleration = autoSpeedMax * 10; //00; //steps per second per second, how fast reach max speed in auto mode
 
 //const long POS_MAX_UP   = -2147483648L;
 //const long POS_MAX_DOWN = 2147483647L;
@@ -277,7 +279,7 @@ int       zSpeed    = 0     ;//current speed value
 boolean   zUp       = true  ;//current direction
 
 const int FLUSH_MIN = 0     ;//absolut minimal value for flush
-const int FLUSH_MAX = 1023  ;//absolut maximal value for flush
+const int FLUSH_MAX = 2047  ;//absolut maximal value for flush
 int       zFlush    = (FLUSH_MAX - FLUSH_MIN)/20    ;//current flush value
 
 int       pos = 0;
@@ -337,7 +339,8 @@ void setup()
     stepper.setPinsInverted(directionInvert, /*bool stepInvert*/false, /*bool enableInvert*/ false);
 
   mode = mode_INIT;
-  
+
+#ifdef USE_SERIAL
   //Serial.begin(9600);
   //Serial.begin(57600);
   Serial.begin(115200);
@@ -347,6 +350,7 @@ void setup()
   Serial.print("autoAcceleration: ");Serial.println(autoAcceleration);
 
   Serial.print(mode);
+#endif
 
   v = ((vMax + 1) > V_MAX ? V_MAX : (vMax + 1)); //vMin + ((vMax - vMin) / 2);
   timer_init_ISR_1KHz(TIMER_DEFAULT);
@@ -464,12 +468,14 @@ void loop() {
     case mode_ZERO : modeZeroExec()   ;break;
     case mode_STOP : modeStopExec()   ;break;
   }
-  
+
+#ifdef USE_SERIAL
   //print current state to serial if changed 
   if( changed ) {
     serialPrintState();
   }
-  
+#endif
+
   //update lcd display content if necessary
   updateLCDContent();
 
@@ -602,8 +608,9 @@ void inline modeAutoFlushingWaitingExec();
 void inline modeAutoFlushingReturningExec();
 
 void inline modeAutoEnter(){
+#ifdef USE_SERIAL
   Serial.println("modeAutoEnter");
-
+#endif
 #ifdef isReadUFaked 
   fakedU = ((vMax + 1) > V_MAX ? V_MAX : (vMax + 1)); //vMin + ((vMax - vMin) / 2);
   enc.write(fakedU);
@@ -626,7 +633,9 @@ void inline modeAutoExec(){
   }
 }
 void inline modeAutoLeave(){
+#ifdef USE_SERIAL
   Serial.println("modeAutoLeave"); 
+#endif
   stepper.setSpeed(0l);
   stepper.setMaxSpeed(0L);
   stepper.stop();
@@ -693,9 +702,11 @@ void inline modeAutoWorkingExec(){
 }
 void inline modeAutoFlushingGoingUpExec(){
   boolean isRunning = stepper.isRunning();
+#ifdef USE_SERIAL
   Serial.print("modeAutoFlushingGoingUpExec: isRunning: "); 
   Serial.print(isRunning); 
-  Serial.println(); 
+  Serial.println();
+#endif
   //if( stepper.isRunning() )
   if( isRunning )
     return; //wait in this state till stepper preformed movement to zero and stopped
@@ -703,7 +714,9 @@ void inline modeAutoFlushingGoingUpExec(){
   autoMode = FLUSHING_WAITING;
 }
 void inline modeAutoFlushingWaitingExec(){
+#ifdef USE_SERIAL
   Serial.println("modeAutoFlushingWaitingExec"); 
+#endif
   //here we would wait for flushing to end
   //enter returning sub mode
   autoMode = FLUSHING_RETURNING;
@@ -711,9 +724,11 @@ void inline modeAutoFlushingWaitingExec(){
 }
 void inline modeAutoFlushingReturningExec(){
   boolean isRunning = stepper.isRunning();
+#ifdef USE_SERIAL
   Serial.print("modeAutoFlushingReturningExec: isRunning: "); 
   Serial.print(isRunning); 
-  Serial.println(); 
+  Serial.println();
+#endif
   //if( stepper.isRunning() )
   if( isRunning )
     return; //wait in this state till stepper performed movement to last position and stopped
@@ -767,6 +782,7 @@ void inline calcAvgLoopTime(){
   lastLoopStart = micros();  
 }
 
+#ifdef USE_SERIAL
 // print current state to serial
 void inline serialPrintState() {
     Serial.print(mode);
@@ -776,7 +792,7 @@ void inline serialPrintState() {
     Serial.print(encPosition);
     Serial.println("");  
 }
-
+#endif
 // update LCD content with current values
 void inline updateLCDContent(){
   //update lcd display content if necessary
