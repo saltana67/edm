@@ -7,6 +7,8 @@
 // ----------------------------------------------------------------------------
 //
 
+const boolean directionInvert = false; //set to true to invert stepper direction
+
 #include <Wire.h>
 #include <hd44780.h>                       // main hd44780 header
 #include <hd44780ioClass/hd44780_I2Cexp.h> // i2c expander i/o class header
@@ -259,7 +261,7 @@ const String modeLabel[10] = {
                             //0         1         
                             //01234567890123456789
 
-const String label_INFO    = "MACZ(c) EDM  v.00004";
+const String label_INFO    = "MACZ(c) EDM  v.00005";
 
 int mode    = mode_INIT;
 
@@ -330,6 +332,9 @@ void setup()
   pinMode(SWPIN_VMAX     , INPUT_PULLUP);
   pinMode(SWPIN_VMIN     , INPUT_PULLUP);
   pinMode(SWPIN_FLUSH    , INPUT_PULLUP);
+
+  if( directionInvert )
+    stepper.setPinsInverted(directionInvert, /*bool stepInvert*/false, /*bool enableInvert*/ false);
 
   mode = mode_INIT;
   
