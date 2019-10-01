@@ -175,6 +175,57 @@ const int RELAY_PIN     = 49; //  L     0
 
 const int V_ADC_PIN     = A0;
 
+const char LIGHTNING     = 1;
+const char ARROW_UP      = 2;
+const char ARROW_DOWN    = 3;
+const char BETWEEN_MARKS = 4;
+const char ARROW_RIGHT   = B01111110; //0176
+const char ARROW_LEFT    = B01111111; //0177
+
+uint8_t ARROW_DOWN_PATTERN[8] = {
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b11111,
+  0b01110,
+  0b00100
+};
+
+uint8_t ARROW_UP_PATTERN[8] = {
+  0b00100,
+  0b01110,
+  0b11111,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00100,
+  0b00100
+};
+
+uint8_t LIGHTNING_PATTERN[8] = {
+  0b00010,
+  0b00100,
+  0b01000,
+  0b00100,
+  0b00010,
+  0b10100,
+  0b11000,
+  0b11100
+};
+
+uint8_t BETWEEN_MARKS_PATTERN[8] = {
+  0b01010,
+  0b00100,
+  0b00000,
+  0b11111,
+  0b11111,
+  0b00000,
+  0b00100,
+  0b01010
+};
+
 //constant strings
 //mode labels for displaying
 const String label_INIT     = "INIT...";
@@ -190,7 +241,6 @@ const String label_FLUSH    = "FLUSH  ";
 
 const String label_BLANKMODE= "       ";
 
-const char RIGHT_ARROW = B01111110; 
 
 const String modeLabel[10] = {
   /*0: mode_ZERO*/     label_ZERO    ,
@@ -209,7 +259,7 @@ const String modeLabel[10] = {
                             //0         1         
                             //01234567890123456789
 
-const String label_INFO    = "MACZ(c) EDM  v.00003";
+const String label_INFO    = "MACZ(c) EDM  v.00004";
 
 int mode    = mode_INIT;
 
@@ -256,6 +306,13 @@ void setup()
     // begin() failed so blink error code using the onboard LED if possible
     hd44780::fatalError(status); // does not return
   }
+
+  //create special characters
+  lcd.createChar(LIGHTNING      , LIGHTNING_PATTERN     );
+  lcd.createChar(ARROW_UP       , ARROW_UP_PATTERN      );
+  lcd.createChar(ARROW_DOWN     , ARROW_DOWN_PATTERN    );
+  lcd.createChar(BETWEEN_MARKS  , BETWEEN_MARKS_PATTERN );
+
   //do wrap the line
   lcd.lineWrap();
   
@@ -520,11 +577,19 @@ long workingPos = zFlush;
 long nextFlush  = zFlush;
 
 const int WORKING            = 0;
+
+const int WORKING_GOING_DOWN =-1;
+const int WORKING_WAITING    = 0;
+const int WORKING_GOING_UP   = 1;
+
 const int FLUSHING_GOING_UP  = 1;
 const int FLUSHING_WAITING   = 2;
 const int FLUSHING_RETURNING = 3;
 
 int autoMode = WORKING;
+
+int autoModeWorking = WORKING_WAITING;
+
 
 void inline modeAutoWorkingExec();
 void inline modeAutoFlushingGoingUpExec();
@@ -608,13 +673,18 @@ void inline modeAutoWorkingExec(){
     return; //wait in this state till stepper performed last one step movement and stopped
     
   if( v > vMax ){
+    autoModeWorking = WORKING_GOING_DOWN;
     stepper.move(ONE_STEP_DOWN);  
   }
   else if( v < vMin ){
+    autoModeWorking = WORKING_GOING_UP;
     stepper.move(ONE_STEP_UP);
     nextFlush++; //pull up nextFlush position with us, 
                  //so we always flush after zFlush downward steps
   }
+  else
+    autoModeWorking = WORKING_WAITING;
+
 }
 void inline modeAutoFlushingGoingUpExec(){
   boolean isRunning = stepper.isRunning();
@@ -712,6 +782,25 @@ void inline updateLCDContent(){
     lcd.setCursor(0,1);
     lcd.print(modeLabel[mode]);
 
+    if( mode == mode_AUTO ){
+      char c1 = ' ';
+      char c2 = ' ';
+      switch(autoMode){
+        case WORKING            : c1=LIGHTNING;
+                                  switch(autoModeWorking) {
+                                    case(WORKING_GOING_UP)  : c2=ARROW_UP     ; break;
+                                    case(WORKING_GOING_DOWN): c2=ARROW_DOWN   ; break;
+                                    default                 : c2=BETWEEN_MARKS; break;
+                                  }
+                                  break;
+        case FLUSHING_GOING_UP  : c1='F'; c2=ARROW_UP    ; break;
+        case FLUSHING_WAITING   : c1='F';                ; break;
+        case FLUSHING_RETURNING : c1='F'; c2=ARROW_DOWN  ; break;
+      }
+      lcd.setCursor(5,1);
+      lcd.write(c1);
+      lcd.write(c2);
+    }
     //update modeSwitch state
     printBits(0,2, modeSwitches);
 
